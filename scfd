@@ -29,7 +29,14 @@ foreach($favorites as $track)
 	$path = __DIR__ . '/tracks/' . $track->user->permalink . ' - ' . $track->permalink . '.mp3';
 	if (file_exists($path) === false)
 	{
-		$s = file_get_contents("{$config->api_url}/tracks/{$track->id}/stream?client_id={$clientID}");
+		if ($track->downloadable === true && isset($track->download_url) === true)
+		{
+			$s = file_get_contents("{$config->api_url}/tracks/{$track->id}/download?client_id={$clientID}");
+		}
+		else
+		{
+			$s = file_get_contents("{$config->api_url}/tracks/{$track->id}/stream?client_id={$clientID}");
+		}
 		file_put_contents($path, $s);
 	}
 	echo $path . PHP_EOL;
