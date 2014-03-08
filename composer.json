@@ -1,0 +1,14 @@
+{
+    "name": "stephen-hill/scfd",
+    "description": "If you know what it does, you can use it.",
+    "license": "The Unlicense",
+    "authors": [
+        {
+            "name": "Stephen Hill",
+            "email": "stephen@gatekiller.co.uk"
+        }
+    ],
+    "require": {
+
+    }
+}
