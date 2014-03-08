@@ -16,13 +16,14 @@ if (json_last_error() !== JSON_ERROR_NONE)
 
 $clientID = $config->client_id;
 $userID = (int)$config->user_id;
+$apiURL = $config->api_url;
 
-$favoritesURL = "https://api.soundcloud.com/users/{$userID}/favorites.json?client_id={$clientID}";
+$favoritesURL = "{$config->api_url}/users/{$userID}/favorites.json?client_id={$clientID}";
 $favoritesJSON = file_get_contents($favoritesURL);
 $favorites = json_decode($favoritesJSON);
 
 foreach($favorites as $track)
 {
-	$s = file_get_contents("https://api.soundcloud.com/tracks/{$track->id}/stream?client_id={$clientID}");
+	$s = file_get_contents("{$config->api_url}/tracks/{$track->id}/stream?client_id={$clientID}");
 	file_put_contents(__DIR__ . '/tracks/' . $track->user->permalink . ' - ' . $track->permalink . '.mp3', $s);
 }
