@@ -1,0 +1,28 @@
+#!/usr/bin/php
+<?php
+
+if (is_dir(__DIR__ . '/tracks') === false)
+{
+	mkdir(__DIR__ . '/tracks');
+}
+
+$configFile = file_get_contents(__DIR__ . '/config.json');
+$config = json_decode($configFile);
+
+if (json_last_error() !== JSON_ERROR_NONE)
+{
+	throw new Exception('The config file is invalid.');
+}
+
+$clientID = $config->client_id;
+$userID = (int)$config->user_id;
+
+$favoritesURL = "https://api.soundcloud.com/users/{$userID}/favorites.json?client_id={$clientID}";
+$favoritesJSON = file_get_contents($favoritesURL);
+$favorites = json_decode($favoritesJSON);
+
+foreach($favorites as $track)
+{
+	$s = file_get_contents("https://api.soundcloud.com/tracks/{$track->id}/stream?client_id={$clientID}");
+	file_put_contents(__DIR__ . '/tracks/' . $track->user->permalink . ' - ' . $track->permalink . '.mp3', $s);
+}
