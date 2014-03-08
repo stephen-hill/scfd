@@ -1,6 +1,8 @@
 #!/usr/bin/php
 <?php
 
+ini_set("memory_limit", -1);
+
 if (is_dir(__DIR__ . '/tracks') === false)
 {
 	mkdir(__DIR__ . '/tracks');
@@ -24,6 +26,11 @@ $favorites = json_decode($favoritesJSON);
 
 foreach($favorites as $track)
 {
-	$s = file_get_contents("{$config->api_url}/tracks/{$track->id}/stream?client_id={$clientID}");
-	file_put_contents(__DIR__ . '/tracks/' . $track->user->permalink . ' - ' . $track->permalink . '.mp3', $s);
+	$path = __DIR__ . '/tracks/' . $track->user->permalink . ' - ' . $track->permalink . '.mp3';
+	if (file_exists($path) === false)
+	{
+		$s = file_get_contents("{$config->api_url}/tracks/{$track->id}/stream?client_id={$clientID}");
+		file_put_contents($path, $s);
+	}
+	echo $path . PHP_EOL;
 }
