@@ -3,11 +3,6 @@
 
 ini_set("memory_limit", -1);
 
-if (is_dir(__DIR__ . '/tracks') === false)
-{
-	mkdir(__DIR__ . '/tracks');
-}
-
 $configFile = file_get_contents(__DIR__ . '/config.json');
 $config = json_decode($configFile);
 
@@ -16,17 +11,23 @@ if (json_last_error() !== JSON_ERROR_NONE)
 	throw new Exception('The config file is invalid.');
 }
 
+if (is_dir($config->output_dir . '/tracks') === false)
+{
+	mkdir($config->output_dir . '/tracks');
+}
+
 $clientID = $config->client_id;
 $userID = (int)$config->user_id;
 $apiURL = $config->api_url;
 
-$favoritesURL = "{$config->api_url}/users/{$userID}/track_likes.json?client_id={$clientID}";
-$favoritesJSON = file_get_contents($favoritesURL);
-$favorites = json_decode($favoritesJSON);
+$trackLikes = file_get_contents(
+	"{$config->api_url}/users/{$userID}/track_likes.json?client_id={$clientID}"
+);
+$trackLikes = json_decode($trackLikes);
 
-foreach($favorites as $like)
+foreach($trackLikes as $like)
 {
-	$path = __DIR__ . '/tracks/' . $like->track->user->permalink . ' - ' . $like->track->permalink . '.mp3';
+	$path = $config->output_dir . '/tracks/' . $like->track->user->permalink . ' - ' . $like->track->permalink . '.mp3';
 	if (file_exists($path) === false)
 	{
 		if ($like->track->downloadable === true && isset($like->track->download_url) === true)
@@ -37,7 +38,45 @@ foreach($favorites as $like)
 		{
 			$s = file_get_contents("{$like->track->stream_url}?client_id={$clientID}");
 		}
-		file_put_contents($path, $s);
+		if (count($s) > 0)
+		{
+			file_put_contents($path, $s);
+			echo $path . PHP_EOL;
+		}
 	}
-	echo $path . PHP_EOL;
+}
+
+$playlistLikes = file_get_contents("{$config->api_url}/users/{$userID}/playlist_likes.json?client_id={$clientID}");
+$playlistLikes = json_decode($playlistLikes);
+
+foreach($playlistLikes as $like)
+{
+	$dir = $config->output_dir .
+		'/playlists/' .
+		$like->playlist->user->permalink .
+		' - ' .
+		$like->playlist->permalink;
+
+	if (is_dir($dir) === false){ mkdir($dir,0777,true); }
+
+	foreach ($like->playlist->tracks as $track)
+	{
+		$path = $dir . '/' . $like->playlist->user->permalink . $track->permalink . '.mp3';
+		if (file_exists($path) === false)
+		{
+			if ($track->downloadable === true && isset($track->download_url) === true)
+			{
+				$s = file_get_contents("{$track->download_url}?client_id={$clientID}");
+			}
+			else
+			{
+				$s = file_get_contents("{$track->stream_url}?client_id={$clientID}");
+			}
+			if (count($s) > 0)
+			{
+				file_put_contents($path, $s);
+				echo $path . PHP_EOL;
+			}
+		}
+	}
 }
