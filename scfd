@@ -1,7 +1,11 @@
 #!/usr/bin/php
 <?php
 
+require(__DIR__ . '/vendor/james-heinrich/getid3/getid3/getid3.php');
+require(__DIR__ . '/vendor/james-heinrich/getid3/getid3/write.php');
+
 ini_set("memory_limit", -1);
+date_default_timezone_set('UTC');
 
 $configFile = file_get_contents(__DIR__ . '/config.json');
 $config = json_decode($configFile);
@@ -25,6 +29,10 @@ $trackLikes = file_get_contents(
 );
 $trackLikes = json_decode($trackLikes);
 
+// ID3
+$id3 = new getID3();
+$id3->setOption(array('encoding' => 'UTF-8'));
+
 foreach($trackLikes as $like)
 {
 	$path = $config->output_dir . '/tracks/' . $like->track->user->permalink . ' - ' . $like->track->permalink . '.mp3';
@@ -41,7 +49,43 @@ foreach($trackLikes as $like)
 		if (count($s) > 0)
 		{
 			file_put_contents($path, $s);
-			echo $path . PHP_EOL;
+		}
+	}
+
+	// Only write to non-downloadable tracks since these will already contain tags, hopefully.
+	if ($like->track->downloadable === false)
+	{
+		$write = new getid3_writetags();
+		$write->tagformats = array('id3v2.3');
+		$write->overwrite_tags = true;
+		$write->tag_encoding = 'UTF-8';
+		$write->remove_other_tags = false;
+
+		$data = array(
+			'title'     	=> array($like->track->title),
+			'artist'    	=> array($like->track->user->username),
+			// 'album'     	=> array('Hotline Miami - Official Soundtrack'),
+			'year'      	=> array(date('Y', strtotime($like->track->created_at))),
+			'genre'     	=> array($like->track->genre),
+			// 'track'     	=> array('20/22'),
+			'url_file'  	=> array($like->track->permalink_url),
+			'url_artist'	=> array($like->track->user->permalink_url)
+		);
+		$write->tag_data = $data;
+
+		// Do the writing on a temp file and copy back on success
+		$tmpPath = '/tmp/' . uniqid('scfd', true);
+		$write->filename = $tmpPath;
+		copy($path, $tmpPath);
+
+		if ($write->WriteTags() === true)
+		{
+			rename($tmpPath, $path);
+		}
+		else
+		{
+			unlink($tmpPath);
+			echo "Failed to write tags to {$path}" . PHP_EOL;
 		}
 	}
 }
