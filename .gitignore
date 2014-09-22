@@ -2,3 +2,4 @@ config.json
 tracks
 /vendor/
 composer.lock
+debug.log

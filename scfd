@@ -85,7 +85,7 @@ foreach($trackLikes as $like)
 		else
 		{
 			unlink($tmpPath);
-			echo "Failed to write tags to {$path}" . PHP_EOL;
+			file_put_contents('debug.log', implode(', ', $write->errors) . PHP_EOL, FILE_APPEND);
 		}
 	}
 }
@@ -103,6 +103,7 @@ foreach($playlistLikes as $like)
 
 	if (is_dir($dir) === false){ mkdir($dir,0777,true); }
 
+	$index = 0;
 	foreach ($like->playlist->tracks as $track)
 	{
 		$path = $dir . '/' . $like->playlist->user->permalink . $track->permalink . '.mp3';
@@ -122,5 +123,43 @@ foreach($playlistLikes as $like)
 				echo $path . PHP_EOL;
 			}
 		}
+
+		// Only write to non-downloadable tracks since these will already contain tags, hopefully.
+		if ($track->downloadable === false)
+		{
+			$write = new getid3_writetags();
+			$write->tagformats = array('id3v2.3');
+			$write->overwrite_tags = true;
+			$write->tag_encoding = 'UTF-8';
+			$write->remove_other_tags = false;
+
+			$data = array(
+				'title'     	=> array($track->title),
+				'artist'    	=> array($track->user->username),
+				'album'     	=> array($like->playlist->title),
+				'year'      	=> array(date('Y', strtotime($track->created_at))),
+				'genre'     	=> array($track->genre),
+				'track'     	=> array(($index + 1) . '/' . count($like->playlist->tracks)),
+				'url_file'  	=> array($track->permalink_url),
+				'url_artist'	=> array($track->user->permalink_url)
+			);
+			$write->tag_data = $data;
+
+			// Do the writing on a temp file and copy back on success
+			$tmpPath = '/tmp/' . uniqid('scfd', true);
+			$write->filename = $tmpPath;
+			copy($path, $tmpPath);
+
+			if ($write->WriteTags() === true)
+			{
+				rename($tmpPath, $path);
+			}
+			else
+			{
+				unlink($tmpPath);
+				file_put_contents('debug.log', implode(', ', $write->errors) . PHP_EOL, FILE_APPEND);
+			}
+		}
+		$index++;
 	}
 }
